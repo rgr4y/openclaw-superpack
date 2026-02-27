@@ -1,0 +1,17 @@
+{
+  "name": "openclaw-superpack",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node --import tsx build.ts",
+    "watch": "node --import tsx build.ts --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "tsx": "*",
+    "typescript": "*",
+    "vitest": "^4.0.18"
+  }
+}
