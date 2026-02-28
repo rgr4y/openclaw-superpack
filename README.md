@@ -13,20 +13,54 @@ Zero patches. Zero forks. Just build-time overlays that snap in clean.
 - **Diagnostic flags** — `SUPERPACK_FLAGS=dump_system_prompt` and friends. See exactly what's going into your prompts, tools, hooks, and LLM calls. Presets like `debug_all` for when you just want to see everything.
 - **Full overlay system** — replace any upstream file at build time. Your customizations, upstream's everything-else.
 
-## Quick start
+## Prerequisites
+
+- Node.js 22+
+- pnpm
+- openclaw built from source (see below)
+
+## Install
 
 ```bash
-# Build (outputs to /opt/openclaw-git/dist/)
-bun /opt/openclaw-superpack/build.ts
+# 1. Clone openclaw from source
+git clone https://github.com/openclaw/openclaw.git /your/path/openclaw
+cd /your/path/openclaw
+pnpm install
+pnpm ui:build
+pnpm build
 
-# Build + re-link global openclaw binary
-cd /opt/openclaw-superpack && pnpm run link
+# 2. Clone superpack
+git clone https://github.com/rgr4y/openclaw-superpack.git /your/path/openclaw-superpack
+cd /your/path/openclaw-superpack
+pnpm install
+
+# 3. Tell superpack where openclaw lives
+export OPENCLAW_UPSTREAM=/your/path/openclaw
+```
+
+Add the export to your shell profile so it persists.
+
+If you skip `OPENCLAW_UPSTREAM`, superpack defaults to `/opt/openclaw-git`.
+
+## Build & link
+
+```bash
+# Build superpack overlays into openclaw's dist/
+pnpm build
+
+# Build + re-link the global `openclaw` binary
+pnpm link
 
 # Watch mode — rebuild on save
-bun /opt/openclaw-superpack/build.ts --watch
+pnpm watch
+```
 
-# Run the tests
-npx vitest run
+### One-shot: install openclaw deps + build from scratch
+
+```bash
+pnpm install:openclaw   # runs pnpm install, ui:build, and build in $OPENCLAW_UPSTREAM
+pnpm build              # then overlay superpack on top
+pnpm link               # re-link global binary
 ```
 
 ## Hooks
@@ -86,9 +120,11 @@ Upstream stays untouched. Your overlay fully replaces that module at build time.
 ## Keeping up with upstream
 
 ```bash
-cd /opt/openclaw-git && git pull
+cd $OPENCLAW_UPSTREAM && git pull
 # Check if overlaid files changed
 git diff HEAD~1 -- src/agents/system-prompt.ts src/plugins/types.ts src/plugins/hooks.ts src/agents/workspace.ts
 # If yes, review and absorb changes into your overlays
-bun /opt/openclaw-superpack/build.ts
+pnpm install:openclaw   # rebuild upstream
+pnpm build              # rebuild overlays
+pnpm link               # re-link
 ```

@@ -1,21 +1,28 @@
 /**
  * openclaw-superpack build script
  *
- * Builds /opt/openclaw-git with overlay files injected via a rolldown plugin.
+ * Builds openclaw with overlay files injected via a rolldown plugin.
  * Patches the upstream tsdown.config.ts at runtime by prepending a plugin;
  * does not copy or modify any upstream files.
  *
+ * Paths are configured via env vars (or edit the defaults below):
+ *   OPENCLAW_UPSTREAM  — path to your openclaw-git checkout
+ *   OPENCLAW_SUPERPACK — path to this superpack checkout
+ *
  * Usage:
- *   node --import tsx /opt/openclaw-superpack/build.ts
- *   node --import tsx /opt/openclaw-superpack/build.ts --watch
+ *   pnpm build          # or: node --import tsx build.ts
+ *   pnpm watch          # or: node --import tsx build.ts --watch
  */
 
 import { spawn } from "node:child_process";
 import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const UPSTREAM = "/opt/openclaw-git";
-const OVERLAY = "/opt/openclaw-superpack";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const UPSTREAM = process.env.OPENCLAW_UPSTREAM ?? "/opt/openclaw-git";
+const OVERLAY = process.env.OPENCLAW_SUPERPACK ?? __dirname;
 
 // ---------------------------------------------------------------------------
 // Overlay map: add entries here to shadow more upstream files

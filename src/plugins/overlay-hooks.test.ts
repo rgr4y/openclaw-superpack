@@ -4,7 +4,7 @@
  * methods are preserved.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { PluginRegistry } from "/opt/openclaw-git/src/plugins/registry.js";
 import { createHookRunner } from "./hooks.js";
 
@@ -151,5 +151,76 @@ describe("overlay hooks.ts — superpack runner methods", () => {
     expect(result).toBeDefined();
     expect(result!.block).toBe(true);
     expect(result!.reason).toBe("test block");
+  });
+});
+
+describe("superpack startup banner", () => {
+  it("hasHooks('gateway_start') is always true even with empty registry", () => {
+    const runner = createHookRunner(makeEmptyRegistry());
+    // Superpack overrides this so the upstream guard doesn't skip runGatewayStart
+    expect(runner.hasHooks("gateway_start" as any)).toBe(true);
+  });
+
+  it("hasHooks returns false for other hooks with no registrations", () => {
+    const runner = createHookRunner(makeEmptyRegistry());
+    expect(runner.hasHooks("gateway_stop" as any)).toBe(false);
+    expect(runner.hasHooks("session_start" as any)).toBe(false);
+    expect(runner.hasHooks("system_prompt_footer" as any)).toBe(false);
+  });
+
+  it("emits banner via logger.warn when runGatewayStart is called (mimics upstream pattern)", async () => {
+    // Upstream does: if (hookRunner?.hasHooks("gateway_start")) { void hookRunner.runGatewayStart(...) }
+    const warnMessages: string[] = [];
+    const mockLogger = {
+      warn: (msg: string) => { warnMessages.push(msg); },
+      error: (msg: string) => {},
+    };
+
+    const runner = createHookRunner(makeEmptyRegistry(), { logger: mockLogger });
+
+    // Step 1: upstream guard check — must pass
+    expect(runner.hasHooks("gateway_start" as any)).toBe(true);
+
+    // Step 2: upstream calls runGatewayStart
+    await runner.runGatewayStart({ port: 18789 }, { port: 18789 });
+
+    // Step 3: banner should have been emitted
+    expect(warnMessages.length).toBe(1);
+    expect(warnMessages[0]).toContain("[superpack] loaded");
+    expect(warnMessages[0]).toContain("0/6 hooks active");
+    expect(warnMessages[0]).toContain("○ system_prompt_tools_filter");
+    expect(warnMessages[0]).toContain("○ subagent_prompt_validate");
+  });
+
+  it("banner shows active hooks when plugins register handlers", async () => {
+    const warnMessages: string[] = [];
+    const mockLogger = {
+      warn: (msg: string) => { warnMessages.push(msg); },
+      error: (msg: string) => {},
+    };
+
+    const registry = makeEmptyRegistry();
+    registry.typedHooks.push({
+      pluginId: "my-plugin",
+      hookName: "system_prompt_footer" as any,
+      handler: (() => ({ append: "test" })) as any,
+      priority: 0,
+      source: "test",
+    });
+    registry.typedHooks.push({
+      pluginId: "my-plugin",
+      hookName: "workspace_bootstrap_before" as any,
+      handler: (() => ({ files: [], skip: false })) as any,
+      priority: 0,
+      source: "test",
+    });
+
+    const runner = createHookRunner(registry, { logger: mockLogger });
+    await runner.runGatewayStart({ port: 18789 }, { port: 18789 });
+
+    expect(warnMessages[0]).toContain("2/6 hooks active");
+    expect(warnMessages[0]).toContain("● system_prompt_footer");
+    expect(warnMessages[0]).toContain("● workspace_bootstrap_before");
+    expect(warnMessages[0]).toContain("○ system_prompt_tools_filter");
   });
 });

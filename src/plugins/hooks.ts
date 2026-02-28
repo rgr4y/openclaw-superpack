@@ -705,7 +705,23 @@ export function createHookRunner(registry: PluginRegistry, options: HookRunnerOp
     event: PluginHookGatewayStartEvent,
     ctx: PluginHookGatewayContext,
   ): Promise<void> {
-    return runVoidHook("gateway_start", event, ctx);
+    await runVoidHook("gateway_start", event, ctx);
+    // Superpack startup banner
+    const SUPERPACK_HOOKS: PluginHookName[] = [
+      "system_prompt_tools_filter",
+      "system_prompt_skills_filter",
+      "system_prompt_footer",
+      "workspace_bootstrap_before",
+      "workspace_bootstrap_after",
+      "subagent_prompt_validate",
+    ];
+    const activeCount = SUPERPACK_HOOKS.filter((h) => hasHooks(h)).length;
+    const hookSummary = SUPERPACK_HOOKS.map(
+      (h) => `  ${hasHooks(h) ? "●" : "○"} ${h}`,
+    ).join("\n");
+    logger?.warn(
+      `[superpack] loaded — ${activeCount}/${SUPERPACK_HOOKS.length} hooks active\n${hookSummary}`,
+    );
   }
 
   /**
@@ -843,6 +859,8 @@ export function createHookRunner(registry: PluginRegistry, options: HookRunnerOp
    * Check if any hooks are registered for a given hook name.
    */
   function hasHooks(hookName: PluginHookName): boolean {
+    // Superpack always needs gateway_start to emit its startup banner
+    if (hookName === "gateway_start") return true;
     return registry.typedHooks.some((h) => h.hookName === hookName);
   }
 

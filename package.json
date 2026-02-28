@@ -1,11 +1,13 @@
 {
   "name": "openclaw-superpack",
-  "version": "0.0.1",
-  "private": true,
+  "version": "0.0.2",
+  "description": "Power toys for openclaw — plugin hooks, workspace control, diagnostic flags, and build-time overlays.",
   "type": "module",
   "scripts": {
-    "build": "node --import tsx build.ts",
+    "build": "node --import tsx build.ts && cd \"${OPENCLAW_UPSTREAM:-/opt/openclaw-git}\" && pnpm ui:build",
     "watch": "node --import tsx build.ts --watch",
+    "link": "pnpm build && cd \"${OPENCLAW_UPSTREAM:-/opt/openclaw-git}\" && npm link",
+    "install:openclaw": "cd \"${OPENCLAW_UPSTREAM:-/opt/openclaw-git}\" && pnpm install && pnpm build && pnpm ui:build",
     "test": "vitest run",
     "test:watch": "vitest"
   },
