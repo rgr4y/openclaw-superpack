@@ -61,6 +61,7 @@ import type {
   PluginHookWorkspaceBootstrapAfterEvent,
   PluginHookSubagentPromptValidateEvent,
   PluginHookSubagentPromptValidateResult,
+  PluginHookSandboxWorkspaceReadyEvent,
 } from "./types.js";
 
 // Re-export types for consumers
@@ -117,6 +118,7 @@ export type {
   PluginHookWorkspaceBootstrapAfterEvent,
   PluginHookSubagentPromptValidateEvent,
   PluginHookSubagentPromptValidateResult,
+  PluginHookSandboxWorkspaceReadyEvent,
 };
 
 export type HookRunnerLogger = {
@@ -714,6 +716,7 @@ export function createHookRunner(registry: PluginRegistry, options: HookRunnerOp
       "workspace_bootstrap_before",
       "workspace_bootstrap_after",
       "subagent_prompt_validate",
+      "sandbox_workspace_ready",
     ];
     const activeCount = SUPERPACK_HOOKS.filter((h) => hasHooks(h)).length;
     const hookSummary = SUPERPACK_HOOKS.map(
@@ -851,6 +854,32 @@ export function createHookRunner(registry: PluginRegistry, options: HookRunnerOp
     );
   }
 
+  /**
+   * Run sandbox_workspace_ready hook.
+   * Fires after workspace bootstrap and skill sync, before Docker container starts.
+   * Runs sequentially — each handler is awaited before the next.
+   * Handlers perform fs side-effects directly (void return).
+   */
+  async function runSandboxWorkspaceReady(
+    event: PluginHookSandboxWorkspaceReadyEvent,
+    ctx: PluginHookAgentContext,
+  ): Promise<void> {
+    const hooks = getHooksForName(registry, "sandbox_workspace_ready");
+    if (hooks.length === 0) {
+      return;
+    }
+
+    logger?.debug?.(`[hooks] running sandbox_workspace_ready (${hooks.length} handlers, sequential)`);
+
+    for (const hook of hooks) {
+      try {
+        await (hook.handler as (event: unknown, ctx: unknown) => Promise<void>)(event, ctx);
+      } catch (err) {
+        handleHookError({ hookName: "sandbox_workspace_ready", pluginId: hook.pluginId, error: err });
+      }
+    }
+  }
+
   // =========================================================================
   // Utility
   // =========================================================================
@@ -909,6 +938,7 @@ export function createHookRunner(registry: PluginRegistry, options: HookRunnerOp
     runWorkspaceBootstrapBefore,
     runWorkspaceBootstrapAfter,
     runSubagentPromptValidate,
+    runSandboxWorkspaceReady,
     // Utility
     hasHooks,
     getHookCount,

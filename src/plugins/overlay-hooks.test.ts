@@ -187,9 +187,10 @@ describe("superpack startup banner", () => {
     // Step 3: banner should have been emitted
     expect(warnMessages.length).toBe(1);
     expect(warnMessages[0]).toContain("[superpack] loaded");
-    expect(warnMessages[0]).toContain("0/6 hooks active");
+    expect(warnMessages[0]).toContain("0/7 hooks active");
     expect(warnMessages[0]).toContain("○ system_prompt_tools_filter");
     expect(warnMessages[0]).toContain("○ subagent_prompt_validate");
+    expect(warnMessages[0]).toContain("○ sandbox_workspace_ready");
   });
 
   it("banner shows active hooks when plugins register handlers", async () => {
@@ -218,9 +219,64 @@ describe("superpack startup banner", () => {
     const runner = createHookRunner(registry, { logger: mockLogger });
     await runner.runGatewayStart({ port: 18789 }, { port: 18789 });
 
-    expect(warnMessages[0]).toContain("2/6 hooks active");
+    expect(warnMessages[0]).toContain("2/7 hooks active");
     expect(warnMessages[0]).toContain("● system_prompt_footer");
     expect(warnMessages[0]).toContain("● workspace_bootstrap_before");
     expect(warnMessages[0]).toContain("○ system_prompt_tools_filter");
+  });
+});
+
+describe("runSandboxWorkspaceReady", () => {
+  it("returns runner with runSandboxWorkspaceReady method", () => {
+    const runner = createHookRunner(makeEmptyRegistry());
+    expect(typeof runner.runSandboxWorkspaceReady).toBe("function");
+  });
+
+  it("returns undefined when no hooks registered", async () => {
+    const runner = createHookRunner(makeEmptyRegistry());
+    const result = await runner.runSandboxWorkspaceReady(
+      {
+        workspaceDir: "/tmp/sandbox",
+        agentWorkspaceDir: "/tmp/workspace",
+        agentId: "code-only",
+        sessionKey: "agent:main:subagent:code-only:abc",
+        scopeKey: "abc",
+      },
+      { agentId: "main" },
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it("calls handlers sequentially in priority order", async () => {
+    const order: number[] = [];
+    const registry = makeEmptyRegistry();
+    registry.typedHooks.push({
+      pluginId: "plugin-a",
+      hookName: "sandbox_workspace_ready" as any,
+      handler: (async () => { order.push(1); }) as any,
+      priority: 10,
+      source: "test",
+    });
+    registry.typedHooks.push({
+      pluginId: "plugin-b",
+      hookName: "sandbox_workspace_ready" as any,
+      handler: (async () => { order.push(2); }) as any,
+      priority: 0,
+      source: "test",
+    });
+
+    const runnerWithHooks = createHookRunner(registry);
+    await runnerWithHooks.runSandboxWorkspaceReady(
+      {
+        workspaceDir: "/tmp/sandbox",
+        agentWorkspaceDir: "/tmp/workspace",
+        agentId: "code-only",
+        sessionKey: "agent:main:subagent:code-only:abc",
+        scopeKey: "abc",
+      },
+      { agentId: "main" },
+    );
+    // Higher priority runs first
+    expect(order).toEqual([1, 2]);
   });
 });

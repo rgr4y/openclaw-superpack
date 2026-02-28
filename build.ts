@@ -44,6 +44,10 @@ const OVERLAY_ALIASES: Record<string, string> = {
     OVERLAY,
     "src/agents/workspace.ts",
   ),
+  [path.join(UPSTREAM, "src/agents/sandbox/context.ts")]: path.join(
+    OVERLAY,
+    "src/agents/sandbox/context.ts",
+  ),
 };
 
 const args = process.argv.slice(2);
