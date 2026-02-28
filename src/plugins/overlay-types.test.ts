@@ -5,6 +5,9 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import type {
   PluginHookName,
   PluginHookHandlerMap,
@@ -26,6 +29,10 @@ import type {
 type AssertExtends<T, U> = T extends U ? true : false;
 
 describe("overlay types.ts — superpack hook names in PluginHookName", () => {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const typesSrc = readFileSync(path.join(__dirname, "types.ts"), "utf-8");
+
   const SUPERPACK_HOOK_NAMES: PluginHookName[] = [
     "system_prompt_tools_filter",
     "system_prompt_skills_filter",
@@ -141,4 +148,10 @@ describe("overlay types.ts — superpack hook names in PluginHookName", () => {
     ];
     expect(checks.every(Boolean)).toBe(true);
   });
+
+  it("defines PluginHookSandboxWorkspaceReadyEvent type", () => {
+    expect(typesSrc).toContain("PluginHookSandboxWorkspaceReadyEvent");
+    expect(typesSrc).toContain("sandbox_workspace_ready");
+  });
+
 });

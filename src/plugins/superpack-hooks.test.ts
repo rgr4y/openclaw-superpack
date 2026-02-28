@@ -6,6 +6,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   createSuperpackHookRunner,
   type SuperpackHookHandler,
@@ -444,6 +447,22 @@ describe("superpack hook runner", () => {
         },
       ]);
       expect(runner.hasHooks("system_prompt_footer")).toBe(true);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // SuperpackHookName union includes sandbox_workspace_ready
+  // -----------------------------------------------------------------------
+  describe("SuperpackHookName source check", () => {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+
+    it("includes sandbox_workspace_ready in SuperpackHookName", async () => {
+      const src = readFileSync(
+        path.join(__dirname, "superpack-hooks.ts"),
+        "utf-8",
+      );
+      expect(src).toContain('"sandbox_workspace_ready"');
     });
   });
 });

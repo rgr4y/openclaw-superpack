@@ -327,7 +327,8 @@ export type PluginHookName =
   | "system_prompt_footer"
   | "workspace_bootstrap_before"
   | "workspace_bootstrap_after"
-  | "subagent_prompt_validate";
+  | "subagent_prompt_validate"
+  | "sandbox_workspace_ready";
 
 // Agent context shared across agent hooks
 export type PluginHookAgentContext = {
@@ -734,6 +735,15 @@ export type PluginHookSubagentPromptValidateResult = {
   reason?: string;
 };
 
+// sandbox_workspace_ready hook (sequential void — fires before Docker container starts)
+export type PluginHookSandboxWorkspaceReadyEvent = {
+  workspaceDir: string;
+  agentWorkspaceDir: string;
+  agentId: string;
+  sessionKey: string;
+  scopeKey: string;
+};
+
 // Hook handler types mapped by hook name
 export type PluginHookHandlerMap = {
   before_model_resolve: (
@@ -872,6 +882,10 @@ export type PluginHookHandlerMap = {
     | Promise<PluginHookSubagentPromptValidateResult | void>
     | PluginHookSubagentPromptValidateResult
     | void;
+  sandbox_workspace_ready: (
+    event: PluginHookSandboxWorkspaceReadyEvent,
+    ctx: PluginHookAgentContext,
+  ) => Promise<void> | void;
 };
 
 export type PluginHookRegistration<K extends PluginHookName = PluginHookName> = {

@@ -17,7 +17,8 @@ export type SuperpackHookName =
   | "system_prompt_footer"
   | "workspace_bootstrap_before"
   | "workspace_bootstrap_after"
-  | "subagent_prompt_validate";
+  | "subagent_prompt_validate"
+  | "sandbox_workspace_ready";
 
 // ---------------------------------------------------------------------------
 // Event & result types
@@ -85,6 +86,15 @@ export type WorkspaceBootstrapAfterEvent = {
   filesSkipped: string[];
 };
 
+// sandbox_workspace_ready (sequential void — fires before Docker starts)
+export type SandboxWorkspaceReadyEvent = {
+  workspaceDir: string;
+  agentWorkspaceDir: string;
+  agentId: string;
+  sessionKey: string;
+  scopeKey: string;
+};
+
 // subagent_prompt_validate
 export type SubagentPromptValidateEvent = {
   agentId: string;
@@ -126,6 +136,10 @@ type HandlerMap = {
   subagent_prompt_validate: (
     event: SubagentPromptValidateEvent,
   ) => Promise<SubagentPromptValidateResult | void> | SubagentPromptValidateResult | void;
+
+  sandbox_workspace_ready: (
+    event: SandboxWorkspaceReadyEvent,
+  ) => Promise<void> | void;
 };
 
 export type SuperpackHookHandler<K extends SuperpackHookName> = HandlerMap[K];
@@ -264,6 +278,20 @@ export function createSuperpackHookRunner(registrations: HookRegistration[]) {
     return { block: false };
   }
 
+  // -- Sequential void: sandbox workspace ready --
+  async function runSandboxWorkspaceReady(
+    event: SandboxWorkspaceReadyEvent,
+  ): Promise<void> {
+    const hooks = getHooks(registrations, "sandbox_workspace_ready");
+    for (const hook of hooks) {
+      try {
+        await hook.handler(event);
+      } catch {
+        // Error: swallow, don't block container creation
+      }
+    }
+  }
+
   // -- Utility --
   function hasHooks(name: SuperpackHookName): boolean {
     return registrations.some((r) => r.hookName === name);
@@ -276,6 +304,7 @@ export function createSuperpackHookRunner(registrations: HookRegistration[]) {
     runWorkspaceBootstrapBefore,
     runWorkspaceBootstrapAfter,
     runSubagentPromptValidate,
+    runSandboxWorkspaceReady,
     hasHooks,
   };
 }
